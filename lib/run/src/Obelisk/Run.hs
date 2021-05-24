@@ -122,9 +122,12 @@ getTlsPubPriv :: Map Text ByteString -> IO (ByteString, ByteString)
 getTlsPubPriv configs =
   -- Get the TLS certificate and key from config, if it exists
   case (Map.lookup "backend/privatekey.key" configs, Map.lookup "backend/publickey.crt" configs) of
-    (Just certByteString, Just privateKeyByteString) -> return (certByteString, privateKeyByteString)
+    (Just certByteString, Just privateKeyByteString) -> do
+      putStrLn "Using TLS certificate at backend/publickey.crt"
+      return (certByteString, privateKeyByteString)
     _ -> do
       -- Generate a private key and self-signed certificate for TLS
+      putStrLn "Generating a self-signed TLS certificate to use in this session"
       privateKey <- RSA.generateRSAKey' 2048 3
 
       certRequest <- X509Request.newX509Req
