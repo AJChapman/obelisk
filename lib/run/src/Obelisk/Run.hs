@@ -118,6 +118,30 @@ getConfigRoute configs = case Map.lookup "common/route" configs of
           Nothing -> Left $ "Couldn't parse route as URI; value read was: " <> T.pack (show stripped)
     Nothing -> Left $ "Couldn't find config file common/route; it should contain the site's canonical root URI" <> T.pack (show $ Map.keys configs)
 
+getTlsPubPriv :: Map Text ByteString -> IO (ByteString, ByteString)
+getTlsPubPriv configs =
+  -- Get the TLS certificate and key from config, if it exists
+  case (Map.lookup "backend/privatekey.key" configs, Map.lookup "backend/publickey.crt" configs) of
+    (Just certByteString, Just privateKeyByteString) -> return (certByteString, privateKeyByteString)
+    _ -> do
+      -- Generate a private key and self-signed certificate for TLS
+      privateKey <- RSA.generateRSAKey' 2048 3
+
+      certRequest <- X509Request.newX509Req
+      _ <- X509Request.setPublicKey certRequest privateKey
+      _ <- X509Request.signX509Req certRequest privateKey Nothing
+
+      cert <- X509.newX509 >>= X509Request.makeX509FromReq certRequest
+      _ <- X509.setPublicKey cert privateKey
+      timenow <- getCurrentTime
+      _ <- X509.setNotBefore cert $ addUTCTime (-1) timenow
+      _ <- X509.setNotAfter cert $ addUTCTime (365 * 24 * 60 * 60) timenow
+      _ <- X509.signX509 cert privateKey Nothing
+
+      certByteString <- BSUTF8.fromString <$> PEM.writeX509 cert
+      privateKeyByteString <- BSUTF8.fromString <$> PEM.writePKCS8PrivateKey privateKey Nothing
+      return (certByteString, privateKeyByteString)
+
 runWidget
   :: RunConfig
   -> Map Text ByteString
@@ -135,22 +159,7 @@ runWidget conf configs frontend validFullEncoder = do
       -- Providing TLS here will also incidentally provide it to proxied requests to the backend.
       prepareRunner = case uri ^? uriScheme . _Just . unRText of
         Just "https" -> do
-          -- Generate a private key and self-signed certificate for TLS
-          privateKey <- RSA.generateRSAKey' 2048 3
-
-          certRequest <- X509Request.newX509Req
-          _ <- X509Request.setPublicKey certRequest privateKey
-          _ <- X509Request.signX509Req certRequest privateKey Nothing
-
-          cert <- X509.newX509 >>= X509Request.makeX509FromReq certRequest
-          _ <- X509.setPublicKey cert privateKey
-          timenow <- getCurrentTime
-          _ <- X509.setNotBefore cert $ addUTCTime (-1) timenow
-          _ <- X509.setNotAfter cert $ addUTCTime (365 * 24 * 60 * 60) timenow
-          _ <- X509.signX509 cert privateKey Nothing
-
-          certByteString <- BSUTF8.fromString <$> PEM.writeX509 cert
-          privateKeyByteString <- BSUTF8.fromString <$> PEM.writePKCS8PrivateKey privateKey Nothing
+          (certByteString, privateKeyByteString) <- getTlsPubPriv configs
 
           return $ runTLSSocket (tlsSettingsMemory certByteString privateKeyByteString)
         _ -> return runSettingsSocket
