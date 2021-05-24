@@ -121,9 +121,9 @@ getConfigRoute configs = case Map.lookup "common/route" configs of
 getTlsPubPriv :: Map Text ByteString -> IO (ByteString, ByteString)
 getTlsPubPriv configs =
   -- Get the TLS certificate and key from config, if it exists
-  case (Map.lookup "backend/privatekey.key" configs, Map.lookup "backend/publickey.crt" configs) of
+  case (Map.lookup "common/privatekey.key" configs, Map.lookup "common/publickey.crt" configs) of
     (Just certByteString, Just privateKeyByteString) -> do
-      putStrLn "Using TLS certificate at backend/publickey.crt"
+      putStrLn "Using TLS certificate at common/publickey.crt"
       return (certByteString, privateKeyByteString)
     _ -> do
       -- Generate a private key and self-signed certificate for TLS
