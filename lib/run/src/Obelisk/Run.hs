@@ -121,7 +121,7 @@ getConfigRoute configs = case Map.lookup "common/route" configs of
 getTlsPubPriv :: Map Text ByteString -> IO (ByteString, ByteString)
 getTlsPubPriv configs =
   -- Get the TLS certificate and key from config, if it exists
-  case (Map.lookup "common/privatekey.key" configs, Map.lookup "common/publickey.crt" configs) of
+  case (Map.lookup "common/publickey.crt" configs, Map.lookup "common/privatekey.key" configs) of
     (Just certByteString, Just privateKeyByteString) -> do
       putStrLn "Using TLS certificate at common/publickey.crt"
       return (certByteString, privateKeyByteString)
@@ -163,7 +163,6 @@ runWidget conf configs frontend validFullEncoder = do
       prepareRunner = case uri ^? uriScheme . _Just . unRText of
         Just "https" -> do
           (certByteString, privateKeyByteString) <- getTlsPubPriv configs
-
           return $ runTLSSocket (tlsSettingsMemory certByteString privateKeyByteString)
         _ -> return runSettingsSocket
   runner <- prepareRunner
