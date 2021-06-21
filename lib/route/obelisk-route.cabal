@@ -16,6 +16,7 @@ library
                  dependent-sum,
                  dependent-sum-template,
                  either,
+                 exception-transformers,
                  ghcjs-dom,
                  http-types,
                  jsaddle,
