@@ -61,6 +61,7 @@ import Control.Category (Category (..), (.))
 import Control.Category.Cartesian ((&&&))
 import Control.Lens hiding (Bifunctor, bimap, universe, element)
 import Control.Monad ((<=<))
+import Control.Monad.Exception
 import Control.Monad.Fix
 import Control.Monad.Morph
 import Control.Monad.Primitive
@@ -113,6 +114,7 @@ newtype RoutedT t r m a = RoutedT { unRoutedT :: ReaderT (Dynamic t r) m a }
     ( Functor
     , Applicative
     , Monad
+    , MonadException
     , MonadFix
     , MonadTrans
     , MFunctor
